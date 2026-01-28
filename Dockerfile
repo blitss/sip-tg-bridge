@@ -17,10 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libopus-dev \
     libopusfile-dev \
     libsoxr-dev \
+    libasound2-dev \
   && rm -rf /var/lib/apt/lists/*
 
 # CMake >= 3.27 required by ntgcalls. Install via pip to keep it recent.
-RUN pip3 install --no-cache-dir cmake
+RUN pip3 install --no-cache-dir --break-system-packages cmake cmake
 
 # Copy sources
 COPY . .

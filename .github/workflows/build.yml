@@ -44,7 +44,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y pkg-config libopus-dev libopusfile-dev libsoxr-dev
+          sudo apt-get install -y pkg-config libopus-dev libopusfile-dev libsoxr-dev libasound2-dev
 
       - name: Install native deps (macOS)
         if: runner.os == 'macOS'

@@ -5,7 +5,6 @@ ntgcalls/*.h
 *.a
 *.lib
 *.db
-*.sum
 session
 session-test
 session.dat
