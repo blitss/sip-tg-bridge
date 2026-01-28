@@ -13,11 +13,11 @@ UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
     LIB_EXT := dylib
     PKG_MANAGER := brew
-    INSTALL_CMD := brew install pkg-config opus opusfile libsoxr
+    INSTALL_CMD := brew install pkg-config opus opusfile libsoxr pulseaudio
 else ifeq ($(UNAME_S),Linux)
     LIB_EXT := so
     PKG_MANAGER := apt
-    INSTALL_CMD := sudo apt-get install pkg-config libopus-dev libopusfile-dev libsoxr-dev
+    INSTALL_CMD := sudo apt-get install pkg-config libopus-dev libopusfile-dev libsoxr-dev libpulse-dev libglib2.0-dev libpipewire-0.3-dev
 else
     LIB_EXT := dll
     PKG_MANAGER := unknown

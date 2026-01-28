@@ -22,12 +22,12 @@ The bridge uses native audio libraries that must be installed:
 
 **Debian/Ubuntu:**
 ```bash
-sudo apt-get install pkg-config libopus-dev libopusfile-dev libsoxr-dev
+sudo apt-get install pkg-config libopus-dev libopusfile-dev libsoxr-dev libpulse-dev libglib2.0-dev libpipewire-0.3-dev
 ```
 
 **macOS:**
 ```bash
-brew install pkg-config opus opusfile libsoxr
+brew install pkg-config opus opusfile libsoxr pulseaudio
 ```
 
 ## Build

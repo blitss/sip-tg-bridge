@@ -1,4 +1,8 @@
 ntgcalls/*.h
+ntgcalls/build_lib
+ntgcalls/shared-output
+ntgcalls/static-output
+ntgcalls/deps/clang
 *.dll
 *.dylib
 *.so
@@ -9,3 +13,4 @@ session
 session-test
 session.dat
 lib
+bin
