@@ -1,0 +1,4 @@
+[submodule "ntgcalls"]
+	path = ntgcalls
+	url = git@github.com:pytgcalls/ntgcalls.git
+	shallow = true

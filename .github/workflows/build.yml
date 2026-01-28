@@ -1,0 +1,67 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+          cache: "pip"
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: "4.1.2"
+
+      - name: Install native deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libopus-dev libopusfile-dev libsoxr-dev
+
+      - name: Install native deps (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install pkg-config opus opusfile libsoxr
+
+      - name: Cache ntgcalls deps
+        uses: actions/cache@v4
+        with:
+          path: |
+            ntgcalls/deps
+            ntgcalls/build_lib
+          key: ${{ runner.os }}-ntgcalls-${{ hashFiles('ntgcalls/**', 'cmake/**', 'Makefile') }}
+
+      - name: Build
+        env:
+          PYTHON: python3
+        run: |
+          make build-all

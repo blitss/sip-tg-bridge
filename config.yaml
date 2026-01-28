@@ -1,0 +1,50 @@
+# SIP-Telegram Bridge Configuration
+# Copy to config.yaml and fill in your values
+
+telegram:
+  # Get from https://my.telegram.org
+  app_id: 20927270
+  app_hash: ""
+  # Your Telegram user ID (the single user this instance serves)
+  user_id:
+
+sip:
+  # Your SIP provider host (e.g. "sip.provider.com" or "sip.provider.com:5060")
+  provider_host: "tryit.jssip.net"
+  # Local port to bind (for receiving SIP responses/RTP)
+  bind_port: 5060
+  # Transport: "udp" or "tcp"
+  transport: "udp"
+  # SIP credentials from your provider (leave empty to skip registration)
+  auth_user: ""
+  auth_password: ""
+  # Optional realm (leave empty unless provider requires it)
+  auth_realm: ""
+  # Enable DTMF (RFC2833)
+  dtmf_enabled: true
+  # Publicly exposed IP
+  external_ip: ""
+  # Enable early media (183 Session Progress)
+  early_media: true
+
+audio:
+  # Internal sample rate (48000 for Telegram)
+  sample_rate: 48000
+  # Channels (must be 1 for now)
+  channels: 1
+  # Frame duration in ms
+  frame_ms: 20
+
+call:
+  # Timeout to establish call
+  establish_timeout: "25s"
+  # Max concurrent calls (0 = unlimited)
+  max_active_calls: 1
+
+jitter:
+  # Minimum packets in jitter buffer before playback
+  min_packets: 3
+  # Target frames for drift correction
+  drift_target_frames: 3
+  # Max burst frames for drift correction
+  drift_max_burst: 2

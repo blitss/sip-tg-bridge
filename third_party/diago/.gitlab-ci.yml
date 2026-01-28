@@ -1,0 +1,12 @@
+image: golang:latest
+
+stages:
+  - test
+
+test:
+  stage: test
+  when: manual
+  script:
+    - cat /proc/net/dev
+    - for x in $(go list ./... | grep -v -E '/examples|/testdata|/cmd'); do go test $x -v -timeout=30s; done
+    #- go test $(go list ./... | grep -v /examples/) -v -cover
