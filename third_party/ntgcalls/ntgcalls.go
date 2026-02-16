@@ -4,6 +4,7 @@ package ntgcalls
 #cgo CFLAGS: -I${SRCDIR}/../../lib
 #cgo LDFLAGS: -L${SRCDIR}/../../lib -lntgcalls -Wl,-rpath,${SRCDIR}/../../lib
 #cgo linux LDFLAGS: -lresolv
+#include "../../glibc_compatibility.h"
 #include "ntgcalls.h"
 #include <stdlib.h>
 extern void handleStreamEnd(uintptr_t ptr, int64_t chatID, ntg_stream_type_enum streamType, ntg_stream_device_enum streamDevice, void*);
