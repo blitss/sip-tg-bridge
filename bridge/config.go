@@ -61,8 +61,8 @@ type yamlConfig struct {
 		AuthUser     string `yaml:"auth_user"`
 		AuthPassword string `yaml:"auth_password"`
 		AuthRealm    string `yaml:"auth_realm"`
-		DTMFEnabled  bool   `yaml:"dtmf_enabled"`
-		EarlyMedia   bool   `yaml:"early_media"`
+		DTMFEnabled  *bool  `yaml:"dtmf_enabled"`
+		EarlyMedia   *bool  `yaml:"early_media"`
 	} `yaml:"sip"`
 	Audio struct {
 		SampleRate int `yaml:"sample_rate"`
@@ -154,8 +154,12 @@ func LoadConfig(path string) (Config, error) {
 	}
 	cfg.SIPAuthRealm = yc.SIP.AuthRealm
 
-	cfg.EnableDTMF = yc.SIP.DTMFEnabled
-	cfg.EnableEarlyMedia = yc.SIP.EarlyMedia
+	if yc.SIP.DTMFEnabled != nil {
+		cfg.EnableDTMF = *yc.SIP.DTMFEnabled
+	}
+	if yc.SIP.EarlyMedia != nil {
+		cfg.EnableEarlyMedia = *yc.SIP.EarlyMedia
+	}
 
 	// Audio
 	if yc.Audio.SampleRate > 0 {

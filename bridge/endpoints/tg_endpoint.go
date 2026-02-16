@@ -31,6 +31,8 @@ type TgEndpoint struct {
 	micStart       time.Time
 	micStartWallMs int64
 	micLastTsMs    int64
+
+	sendFrameLogCount int64
 }
 
 func NewTgEndpoint(ctx *ubot.Context, chatID int64, frameSize int, sampleRate int, onClose func(chatID int64)) *TgEndpoint {
@@ -87,12 +89,20 @@ func (s *TgEndpoint) PushSpeakerFrames(frames []ntgcalls.Frame) {
 			case <-s.done:
 				return
 			case s.frames <- normalized:
+			default:
+				// Drop oldest frame to make room, avoiding blocking the ntgcalls callback.
+				select {
+				case <-s.frames:
+				default:
+				}
+				select {
+				case s.frames <- normalized:
+				default:
+				}
 			}
 		}
 	}
 }
-
-var sendFrameLogCount int64
 
 func (s *TgEndpoint) SendPCMFrame10ms(pcmFrame []byte) error {
 	step := s.stepMs
@@ -118,12 +128,12 @@ func (s *TgEndpoint) SendPCMFrame10ms(pcmFrame []byte) error {
 
 	frameData := ntgcalls.FrameData{AbsoluteCaptureTimestampMs: ts}
 	err := s.ctx.SendExternalFrame(s.chatID, ntgcalls.MicrophoneStream, pcmFrame, frameData)
-	sendFrameLogCount++
-	if sendFrameLogCount <= 5 || (sendFrameLogCount <= 200 && sendFrameLogCount%50 == 0) {
+	s.sendFrameLogCount++
+	if s.sendFrameLogCount <= 5 || (s.sendFrameLogCount <= 200 && s.sendFrameLogCount%50 == 0) {
 		if err != nil {
-			slog.Warn("tg send frame failed", "count", sendFrameLogCount, "size", len(pcmFrame), "ts_ms", ts, "error", err)
+			slog.Warn("tg send frame failed", "count", s.sendFrameLogCount, "size", len(pcmFrame), "ts_ms", ts, "error", err)
 		} else {
-			slog.Info("tg send frame ok", "count", sendFrameLogCount, "size", len(pcmFrame), "ts_ms", ts)
+			slog.Info("tg send frame ok", "count", s.sendFrameLogCount, "size", len(pcmFrame), "ts_ms", ts)
 		}
 	}
 	return err

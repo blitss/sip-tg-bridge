@@ -27,35 +27,52 @@ import (
 	"gotgcalls/bridge/pcm"
 )
 
+// NotifyFunc sends a text notification to the user (e.g. via Telegram message).
+type NotifyFunc func(chatID int64, text string)
+
 type Service struct {
-	cfg         Config
-	sip         *diago.Diago
-	tg          *ubot.Context
-	logger      *slog.Logger
-	mu          sync.Mutex
-	tgSessions  map[int64]*endpoints.TgEndpoint
-	activeCalls atomic.Int64
-	authServer  *diago.DigestAuthServer
+	cfg              Config
+	sip              *diago.Diago
+	tg               *ubot.Context
+	logger           *slog.Logger
+	mu               sync.Mutex
+	tgSessions       map[int64]*endpoints.TgEndpoint
+	activeCalls      atomic.Int64
+	authServer       *diago.DigestAuthServer
+	tgFrameLogCount  atomic.Int64
+	notify           NotifyFunc
 }
 
-func NewService(cfg Config, sip *diago.Diago, tg *ubot.Context, logger *slog.Logger) *Service {
+func NewService(cfg Config, sip *diago.Diago, tg *ubot.Context, logger *slog.Logger, opts ...ServiceOption) *Service {
 	if logger == nil {
 		logger = slog.Default()
 	}
 	gologging.SetLevel(gologging.FatalLevel)
-	gologging.GetLogger("ntgcalls").SetLevel(gologging.FatalLevel)
+	gologging.GetLogger("ntgcalls").SetLevel(gologging.InfoLevel)
 
 	var authServer *diago.DigestAuthServer
 	if cfg.SIPAuthUser != "" && cfg.SIPAuthPass != "" {
 		authServer = diago.NewDigestServer()
 	}
-	return &Service{
+	s := &Service{
 		cfg:        cfg,
 		sip:        sip,
 		tg:         tg,
 		logger:     logger,
 		tgSessions: map[int64]*endpoints.TgEndpoint{},
 		authServer: authServer,
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+type ServiceOption func(*Service)
+
+func WithNotify(fn NotifyFunc) ServiceOption {
+	return func(s *Service) {
+		s.notify = fn
 	}
 }
 
@@ -115,6 +132,8 @@ func (s *Service) handleIncomingSIP(inDialog *diago.DialogServerSession) {
 	}()
 
 	chatID := s.cfg.TGUserID
+
+	s.notifyIncomingCall(chatID, inDialog.FromUser(), inDialog.ToUser())
 
 	callLogger.Info("sip: sending trying")
 	if err := inDialog.Trying(); err != nil {
@@ -315,11 +334,9 @@ func (s *Service) StartCallFromCommand(ctx context.Context, number string) error
 	return nil
 }
 
-var tgFrameLogCount int64
-
 func (s *Service) handleTGFrame(chatID int64, mode ntgcalls.StreamMode, device ntgcalls.StreamDevice, frames []ntgcalls.Frame) {
-	tgFrameLogCount++
-	if tgFrameLogCount <= 5 {
+	count := s.tgFrameLogCount.Add(1)
+	if count <= 5 {
 		totalBytes := 0
 		for _, f := range frames {
 			totalBytes += len(f.Data)
@@ -487,7 +504,6 @@ func (s *Service) inviteWithEarlyMedia(ctx context.Context, recipient sip.Uri, l
 	if err != nil {
 		return nil, false, err
 	}
-	headers := []sip.Header{}
 	if logger != nil {
 		if ms := dialog.MediaSession(); ms != nil {
 			logCodecPrefs(logger, "local codec offer (outbound INVITE)", ms.Codecs)
@@ -506,7 +522,6 @@ func (s *Service) inviteWithEarlyMedia(ctx context.Context, recipient sip.Uri, l
 			}
 			return nil
 		},
-		Headers: headers,
 	})
 	if err != nil {
 		if errors.Is(err, diago.ErrClientEarlyMedia) {
@@ -532,11 +547,10 @@ func (s *Service) validateSDPPolicy(body []byte) error {
 		return err
 	}
 	attrs := desc.Values("a")
-	ptime, hasPtime := parseSDPTimeAttr(attrs, "ptime")
+	_, _ = parseSDPTimeAttr(attrs, "ptime")
 	maxptime, hasMaxPtime := parseSDPTimeAttr(attrs, "maxptime")
-	if hasPtime && ptime != expectedPtime {
-		return errors.New("unsupported ptime")
-	}
+	// Only reject if the remote explicitly caps ptime below what we need.
+	// A different ptime is just a suggestion and most codecs handle it fine.
 	if hasMaxPtime && maxptime < expectedPtime {
 		return errors.New("unsupported maxptime")
 	}
@@ -589,6 +603,17 @@ func (s *Service) authorizeInboundSIP(dialog *diago.DialogServerSession, logger 
 		return err
 	}
 	return nil
+}
+
+func (s *Service) notifyIncomingCall(chatID int64, from string, to string) {
+	if s.notify == nil {
+		return
+	}
+	msg := fmt.Sprintf("Incoming call from %s", from)
+	if to != "" {
+		msg += fmt.Sprintf(" to %s", to)
+	}
+	s.notify(chatID, msg)
 }
 
 func normalizePhone(raw string) string {

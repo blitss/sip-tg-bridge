@@ -18,9 +18,9 @@ import (
 )
 
 func main() {
-	// Reduce verbose WebRTC/ntgcalls logging
+	// Reduce verbose WebRTC logging; keep ntgcalls at info to see connection details
 	gologging.SetLevel(gologging.WarnLevel)
-	gologging.GetLogger("ntgcalls").SetLevel(gologging.WarnLevel)
+	gologging.GetLogger("ntgcalls").SetLevel(gologging.InfoLevel)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
@@ -36,7 +36,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	slog.Info("app id", "id", cfg.TGAppID, "hash", cfg.TGAppHash)
+	slog.Info("telegram app", "app_id", cfg.TGAppID)
 	tgClient, err := tg.NewClient(tg.ClientConfig{
 		AppID:   cfg.TGAppID,
 		AppHash: cfg.TGAppHash,
@@ -89,7 +89,13 @@ func main() {
 		}),
 	)
 
-	service := bridge.NewService(cfg, sipBridge, tgBridge, logger)
+	service := bridge.NewService(cfg, sipBridge, tgBridge, logger,
+		bridge.WithNotify(func(chatID int64, text string) {
+			if _, err := tgClient.SendMessage(chatID, text); err != nil {
+				logger.Warn("tg notify failed", "chat_id", chatID, "error", err)
+			}
+		}),
+	)
 
 	tgClient.On("message:[!/.]call", func(message *tg.NewMessage) error {
 		if message.SenderID() != cfg.TGUserID {

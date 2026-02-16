@@ -1,9 +1,11 @@
 package ubot
 
 import (
+	"encoding/json"
 	"fmt"
 	"gotgcalls/third_party/ntgcalls"
 	"gotgcalls/third_party/ubot/types"
+	"log/slog"
 	"time"
 
 	tg "github.com/amarnathcjd/gogram/telegram"
@@ -126,9 +128,15 @@ func (ctx *Context) connectCall(chatId int64, mediaDescription ntgcalls.MediaDes
 			ctx.p2pConfigs[chatId].PhoneCall = confirmRes.PhoneCall.(*tg.PhoneCallObj)
 		}
 
+		rtcServers := parseRTCServers(ctx.p2pConfigs[chatId].PhoneCall.Connections)
+		slog.Info("tg: connecting p2p call",
+			"chat_id", chatId,
+			"server_count", len(rtcServers),
+			"p2p_allowed", ctx.p2pConfigs[chatId].PhoneCall.P2PAllowed,
+		)
 		err = ctx.binding.ConnectP2P(
 			chatId,
-			parseRTCServers(ctx.p2pConfigs[chatId].PhoneCall.Connections),
+			rtcServers,
 			ctx.p2pConfigs[chatId].PhoneCall.Protocol.LibraryVersions,
 			ctx.p2pConfigs[chatId].PhoneCall.P2PAllowed,
 		)
@@ -181,6 +189,7 @@ func (ctx *Context) connectCall(chatId int64, mediaDescription ntgcalls.MediaDes
 			}
 		}
 
+		logGroupCallTransport(chatId, resultParams)
 		err = ctx.binding.Connect(
 			chatId,
 			resultParams,
@@ -203,4 +212,47 @@ func (ctx *Context) connectCall(chatId int64, mediaDescription ntgcalls.MediaDes
 		}
 	}
 	return <-ctx.waitConnect[chatId]
+}
+
+// logGroupCallTransport extracts and logs IP/port information from group call
+// transport JSON params returned by Telegram.
+func logGroupCallTransport(chatId int64, params string) {
+	if params == "" {
+		return
+	}
+	var payload struct {
+		Transport *struct {
+			Candidates []struct {
+				IP        string `json:"ip"`
+				Port      string `json:"port"`
+				Type      string `json:"type"`
+				Protocol  string `json:"protocol"`
+				Network   string `json:"network"`
+				Component string `json:"component"`
+			} `json:"candidates"`
+		} `json:"transport"`
+	}
+	if err := json.Unmarshal([]byte(params), &payload); err != nil {
+		slog.Warn("tg: could not parse group call transport params", "chat_id", chatId, "error", err)
+		return
+	}
+	if payload.Transport == nil {
+		slog.Info("tg: group call transport is null (stream mode)", "chat_id", chatId)
+		return
+	}
+	slog.Info("tg: connecting group call",
+		"chat_id", chatId,
+		"candidate_count", len(payload.Transport.Candidates),
+	)
+	for i, c := range payload.Transport.Candidates {
+		slog.Info("tg: group call ICE candidate",
+			"chat_id", chatId,
+			"index", i,
+			"ip", c.IP,
+			"port", c.Port,
+			"type", c.Type,
+			"protocol", c.Protocol,
+			"network", c.Network,
+		)
+	}
 }

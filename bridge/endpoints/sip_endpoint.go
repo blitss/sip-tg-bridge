@@ -120,13 +120,13 @@ func NewSipEndpoint(dialog SIPDialog, cfg SIPMediaConfig) (*SipEndpoint, error) 
 	return &SipEndpoint{
 		LKCodec:      audioCodec,
 		LKSDPName:    sdpName,
-		FrameSize:    int(float64(info.SampleRate)*frameDur.Seconds()) * maxInt(1, codec.NumChannels) * 2,
+		FrameSize:    int(float64(info.SampleRate)*frameDur.Seconds()) * max(1, codec.NumChannels) * 2,
 		Codec:        codec,
 		rtpReader:    rtpReader,
 		rtpWriter:    rtpWriter,
 		SampleRate:   info.SampleRate,
 		RTPClockRate: info.RTPClockRate,
-		Channels:     maxInt(1, codec.NumChannels),
+		Channels:     max(1, codec.NumChannels),
 		FrameDur:     frameDur,
 		EnableJitter: cfg.JitterMinPackets > 0,
 	}, nil
@@ -154,11 +154,4 @@ func (s *SipEndpoint) Format() pcm.AudioFormat {
 		Channels:   s.Channels,
 		FrameDur:   s.FrameDur,
 	}
-}
-
-func maxInt(a int, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

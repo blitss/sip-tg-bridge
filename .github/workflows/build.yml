@@ -58,7 +58,7 @@ jobs:
           path: |
             ntgcalls/deps
             ntgcalls/build_lib
-          key: ${{ runner.os }}-ntgcalls-${{ hashFiles('ntgcalls/**', 'cmake/**', 'Makefile') }}
+          key: ${{ runner.os }}-ntgcalls-${{ hashFiles('ntgcalls/CMakeLists.txt', 'ntgcalls/cmake/**', 'cmake/**', 'Makefile') }}
 
       - name: Build
         env:

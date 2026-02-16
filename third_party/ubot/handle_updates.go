@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gotgcalls/third_party/ntgcalls"
 	"gotgcalls/third_party/ubot/types"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -282,6 +283,16 @@ func (ctx *Context) handleUpdates() {
 	})
 
 	ctx.binding.OnConnectionChange(func(chatId int64, state ntgcalls.NetworkInfo) {
+		stateLabel := connectionStateLabel(state.State)
+		kindLabel := "normal"
+		if state.Kind == ntgcalls.PresentationConnection {
+			kindLabel = "presentation"
+		}
+		slog.Info("tg: connection state changed",
+			"chat_id", chatId,
+			"state", stateLabel,
+			"kind", kindLabel,
+		)
 		if ctx.waitConnect[chatId] != nil {
 			switch state.State {
 			case ntgcalls.Connected:
@@ -313,4 +324,21 @@ func (ctx *Context) handleUpdates() {
 			go callback(chatId, mode, device, frames)
 		}
 	})
+}
+
+func connectionStateLabel(s ntgcalls.ConnectionState) string {
+	switch s {
+	case ntgcalls.Connecting:
+		return "connecting"
+	case ntgcalls.Connected:
+		return "connected"
+	case ntgcalls.Failed:
+		return "failed"
+	case ntgcalls.Timeout:
+		return "timeout"
+	case ntgcalls.Closed:
+		return "closed"
+	default:
+		return fmt.Sprintf("unknown(%d)", s)
+	}
 }
